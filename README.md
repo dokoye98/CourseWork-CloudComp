@@ -1,2 +1,2 @@
-# CourseWork-CloudComp
-This will be my coursework will only have one branch. Will be made into a docker image and then deployed with kubernetes
+# Advanced_container
+This is a container it will be a private repo as it will have passwords to databases
