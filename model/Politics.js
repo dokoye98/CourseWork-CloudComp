@@ -1,9 +1,9 @@
 const mongoose = require('mongoose')
 
-const PostSchema = mongoose.Schema({
+const PoliticsSchema = mongoose.Schema({
 
 
-    title:{
+    message:{
         type:String,
         required:true,
         min:1,
@@ -62,4 +62,4 @@ const PostSchema = mongoose.Schema({
 }
 )
 
-module.exports = mongoose.model('posts',PostSchema)
+module.exports = mongoose.model('politics',PoliticsSchema)

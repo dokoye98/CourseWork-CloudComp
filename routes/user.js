@@ -40,7 +40,7 @@ router.post('/signup',async(req,res)=>{
     try{
         const newUser = await dataFormat.save()
         console.log('new user added')
-        return res.status(200).send(newUser)
+        return res.status(200).send({message:'SignUp complete',newUser})
     }catch(err){
         return res.status(400).send({message:err})
     }
@@ -63,7 +63,7 @@ router.post('/login',async(req,res)=>{
         return res.status(400).send({message:'Incorrect password'})
     }
    const token = jsonwebtoken.sign({_id:emailCheck._id},process.env.TOKEN_KEY)
-    res.header('auth-token',token).send({'auth-token':token})
+    res.header('auth-token',token).send({'Sign in succesful':emailCheck.email,'auth-token':token})
     })
 
 

@@ -25,7 +25,7 @@ const loginValidation =(data)=>{
 
 const postValidation = (data)=>{
     const schemaValidation = joi.object({
-        title:joi.string().required().min(1).max(256),
+        message:joi.string().required().min(1).max(256),
         timeLimit:joi.number().required()
     })
     return schemaValidation.validate(data)

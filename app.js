@@ -5,11 +5,14 @@ const mongoose = require('mongoose')
 require('dotenv/config')
 const bodyParse = require('body-parser')
 const UserRouter = require('./routes/user')
-const PostRouter = require('./routes/post')
+const PoliticsRouter = require('./routes/politics')
+const TechRouter = require('./routes/tech')
 
 app.use(bodyParse.json())
 app.use('/api',UserRouter)
-app.use('/pizza',PostRouter)
+app.use('/pizza/politics',PoliticsRouter)
+app.use('/pizza/tech',TechRouter)
+
 
 mongoose.connect(process.env.DB_CONNECTOR).then(()=>{
     console.log('DB connected')

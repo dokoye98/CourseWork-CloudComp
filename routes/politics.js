@@ -1,6 +1,6 @@
 const express  = require('express')
 const router = express()
-const Post = require('../model/Posts')
+const Post = require('../model/Politics')
 const User = require('../model/User')
 const {postValidation} = require('../validations/validation')
 const token = require('../tokenGenerator')
@@ -12,9 +12,10 @@ if(error){
 }
 let expiredTime = new Date()
 const user_Id = req.user._id
-expiredTime.setTime(Date.now() + req.body.timeLimit *24*60*60*1000)
+
+expiredTime.setTime(Date.now() + req.body.timeLimit *60*1000)
     const dataFormat = new Post({
-        title:req.body.title,
+        message:req.body.message,
         expireDate:expiredTime,
         userId:user_Id
     })
@@ -27,7 +28,7 @@ expiredTime.setTime(Date.now() + req.body.timeLimit *24*60*60*1000)
     }
 })
 /*
-I had to trigger the expired update so will be commented until further notice
+
 router.get('/',token,async(req,res)=>{
     try{
         const allPosts = await Post.find()
@@ -39,7 +40,7 @@ router.get('/',token,async(req,res)=>{
     }
 })*/
 
-//post function as it is supposed to constantly update posts
+
 router.post('/homepage',token,async(req,res)=>{
     try {
         const posts = await Post.find().populate('userId','username')
@@ -50,8 +51,7 @@ router.post('/homepage',token,async(req,res)=>{
             return new Date(post.expiredDate).getTime()
         });
 
-        // Check and update expiration status for each post
-        //i = 0 and will increment along as the map function iterates through array
+        
         const expireCheck = posts.map((post, i) => {
             if (currentDate >= expiredDates[i]) {
                 post.expired = true
@@ -82,18 +82,20 @@ router.post('/like/:postId',token,async(req,res)=>{
         if (currentDate >= expire) {
             console.log('expired post')
             const expiredPost = await Post.findByIdAndUpdate(postId,{$set:{expired:true}},{new:true})
-            return res.status(400).send({ message: 'Post has expired' })
+            const timeExpired = new Date()
+            timeExpired.setTime(expire)
+            return res.status(400).send({ message: 'Cannot like post has expired', timeExpired })
         }
         const username = await User.findById(userId)
         if (post.likedBy.includes(userId) || post.dislikedBy.includes(userId)) {
-            // User has already liked the post might add an unlike feature
+            
             return res.status(400).send({ message: 'You cant do that' });
         }
 
-        // Like the post and add user's ID to the 'likedBy' array
+        
        const likedPost= await Post.findByIdAndUpdate( postId,{ $inc: { likes: 1 }, $addToSet: { likedBy: userId, likeList:username.username}},{ new: true });
         console.log('post liked')
-        //console.log(typeof username.username)
+        
       return res.status(200).send({MessageLiker:likedPost.likeList, NumberOfLikes:likedPost.likes})
     } catch (err) {
         console.error(err)
@@ -112,13 +114,16 @@ router.post('/dislike/:postId',token,async(req,res)=>{
             return res.status(400).send({ message: 'Post not found' })
         }
 
+       
         const expire = post.expireDate.getTime()
         const currentDate = new Date().getTime()
 
         if (currentDate >= expire) {
             console.log('expired post')
             const expiredPost = await Post.findByIdAndUpdate(postId,{$set:{expired:true}},{new:true})
-            return res.status(400).send({ message: 'Post has expired' })
+            const timeExpired = new Date()
+            timeExpired.setTime(expire)
+            return res.status(400).send({ message: 'Cannot dislike post has expired', timeExpired })
         }
         const username = await User.findById(userId)
         if (post.dislikedBy.includes(userId) || post.likedBy.includes(userId)) {
@@ -126,7 +131,7 @@ router.post('/dislike/:postId',token,async(req,res)=>{
             return res.status(400).send({ message: 'Youre a real hater' });
         }
 
-        // dislike the post and add user's ID to the 'dislike' array and username to the dislikeList array
+        
        const likedPost= await Post.findByIdAndUpdate( postId,{ $inc: { dislike: 1 }, $addToSet: { dislikedBy: userId, dislikeList:username.username}},{ new: true });
         console.log('post disliked')
         //console.log(typeof username.username)
@@ -148,6 +153,17 @@ router.post('/:postId/comment', token, async (req, res) => {
     
         if (!post) {
           return res.status(404).send({ message: 'Post not found' })
+        }
+        
+        const expire = post.expireDate.getTime()
+        const currentDate = new Date().getTime()
+
+        if (currentDate >= expire) {
+            console.log('expired post')
+            const expiredPost = await Post.findByIdAndUpdate(postId,{$set:{expired:true}},{new:true})
+            const timeExpired = new Date()
+            timeExpired.setTime(expire)
+            return res.status(400).send({ message: 'Cannot comment post has expired', timeExpired })
         }
     //standard checks 
         if (!newComment || typeof newComment !== 'string') {
