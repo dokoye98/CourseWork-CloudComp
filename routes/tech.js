@@ -10,22 +10,36 @@ const {error} = postValidation(req.body)
 if(error){
     return res.status(400).send({message:error['details'][0]['message']})
 }
-let expiredTime = new Date()
-const user_Id = req.user._id
-//right now the conversion rate is minutes *60*1000
-expiredTime.setTime(Date.now() + req.body.timeLimit *60*1000)
-    const dataFormat = new Tech({
-        message:req.body.message,
-        expireDate:expiredTime,
-        userId:user_Id
-    })
+    const user_Id = req.user._id
+    let expiredTime = new Date()
+    // Right now, the conversion rate is minutes * 60 * 1000
+    expiredTime.setTime(Date.now() + req.body.timeLimit * 60 * 1000)
 
-    try{
+    try {
+        const currentDate = new Date().getTime()
+        if (currentDate >= expiredTime.getTime()) {
+            return res.status(400).send({ message: ' time limit has already expired' })
+        }
+
+        const dataFormat = new Tech({
+            message: req.body.message,
+            expireDate: expiredTime,
+            userId: user_Id
+        })
+
         const newPost = await dataFormat.save()
         const username = await User.findById(newPost.userId)
-        return res.status(200).send({Topic:"Tech",Poster:username.username
-        ,PostId:newPost._id,Message:newPost.message
-        ,NumberOfLikes:newPost.likes,NumberOfDislikes:newPost.dislike})
+
+        return res.status(200).send({
+            Topic: "Tech",
+            Poster: username.username,
+            PostId: newPost._id,
+            Message: newPost.message,
+            DatePost:newPost.dateposted,
+            ExpirationTime:newPost.expireDate,
+            NumberOfLikes: newPost.likes,
+            NumberOfDislikes: newPost.dislike
+        })
     }catch(err){
         return res.status(400).send({message:'Sorry invalid post'})
     }
@@ -52,7 +66,7 @@ router.post('/homepage',token,async(req,res)=>{
          // Troubleshooting problems have to make a new date object for code to work
         const expiredDates = posts.map(post => {
             return new Date(post.expiredDate).getTime()
-        });
+        })
 
         // Check and update expiration status for each post
         //i = 0 and will increment along as the map function iterates through array
@@ -85,10 +99,11 @@ router.post('/like/:techId',token,async(req,res)=>{
 
         if (currentDate >= expire) {
             console.log('expired post')
-            const expiredPost = await Post.findByIdAndUpdate(techId,{$set:{expired:true}},{new:true})
+            const expiredPost = await Tech.findByIdAndUpdate(techId,{$set:{expired:true}},{new:true})
             const timeExpired = new Date()
             timeExpired.setTime(expire)
-            return res.status(400).send({ message: 'Cannot like post has expired', timeExpired })
+            return res.status(400).send({ message: 'Cannot like post has expired', Post:expiredPost.message,
+        ExpiredStatus:expiredPost.expired,Likes:expiredPost.likes,Dislikes:expiredPost.dislike })
         }
         const username = await User.findById(userId)
         if (post.likedBy.includes(userId) || post.dislikedBy.includes(userId)) {
@@ -114,7 +129,7 @@ router.post('/like/:techId',token,async(req,res)=>{
 
         // Like the post and add user's ID to the 'likedBy' array
        const likedPost= await Tech.findByIdAndUpdate( techId,{ $inc: { likes: 1 }, 
-        $addToSet: { likedBy: userId, likeList:username.username}},{ new: true });
+        $addToSet: { likedBy: userId, likeList:username.username}},{ new: true })
         console.log('post liked')
         //console.log(typeof username.username)
       return res.status(200).send({PeopleWhoLiked:likedPost.likeList,NumberOfLikes:likedPost.likes,
@@ -146,7 +161,8 @@ router.post('/dislike/:techId',token,async(req,res)=>{
             const expiredPost = await Tech.findByIdAndUpdate(techId,{$set:{expired:true}},{new:true})
             const timeExpired = new Date()
             timeExpired.setTime(expire)
-            return res.status(400).send({ message: 'Cannot dislike post has expired', timeExpired })
+            return res.status(400).send({ message: 'Cannot dislike post has expired', Post:expiredPost.message,
+        ExpiredStatus:expiredPost.expired,Likes:expiredPost.likes,Dislikes:expiredPost.dislike })
         }
         const username = await User.findById(userId)
         if (post.dislikedBy.includes(userId) || post.likedBy.includes(userId)) {
@@ -172,8 +188,8 @@ router.post('/dislike/:techId',token,async(req,res)=>{
         }
 
         // dislike the post and add user's ID to the 'dislike' array and username to the dislikeList array
-       const likedPost= await Post.findByIdAndUpdate( techId,{ $inc: { dislike: 1 }, 
-        $addToSet: { dislikedBy: userId, dislikeList:username.username}},{ new: true });
+       const likedPost= await Tech.findByIdAndUpdate( techId,{ $inc: { dislike: 1 }, 
+        $addToSet: { dislikedBy: userId, dislikeList:username.username}},{ new: true })
         console.log('post disliked')
         //console.log(typeof username.username)
       return res.status(200).send({message:'Post disliked',details:likedPost})
@@ -183,6 +199,66 @@ router.post('/dislike/:techId',token,async(req,res)=>{
     }
 })
 
+router.get('/mostliked',token,async (req,res)=>{
+    try{
+        const mostliked = await Tech.find().sort({likes:-1})
+        //map function iterates through the array of posts 
+        const likelistOfPosts = mostliked.map(tech => ({
+            title: tech.message,
+            DatePosted: tech.dateposted,
+            Expiredstatus: tech.expired,
+            Likes: tech.likes,
+            Dislikes: tech.dislike,
+            WhoLiked: tech.likeList,
+            WhoDisliked: tech.dislikeList,
+            comments: tech.comments
+        }))
+        res.status(200).send(likelistOfPosts)
+
+    }catch(err){
+        res.send(err)
+    }
+})
+
+router.get('/mostdisliked',token,async(req,res)=>{
+    try{
+        const mostdisliked = await Tech.find().sort({dislike:-1})
+        const dislikeListOfPosts = mostdisliked.map(tech =>({
+            title: tech.message,
+            DatePosted: tech.dateposted,
+            Expiredstatus: tech.expired,
+            Likes: tech.likes,
+            Dislikes: tech.dislike,
+            WhoLiked: tech.likeList,
+            WhoDisliked: tech.dislikeList,
+            comments: tech.comments
+        }))
+        res.status(200).send(dislikeListOfPosts)
+    }catch(err){
+        res.status(400).send({message:err})
+    }
+})
+
+router.get('/expiredposts',token,async(req,res)=>{
+    try{
+        const expiredPosts = await Tech.find({expired:true})
+       /* const expiredlistOfPosts = expiredPosts.map(tech => ({
+            title: tech.message,
+            DatePosted: tech.dateposted,
+            Expiredstatus: tech.expired,
+            Likes: tech.likes,
+            Dislikes: tech.dislike,
+            WhoLiked: tech.likeList,
+            WhoDisliked: tech.dislikeList,
+            comments: tech.comments
+        }))*/
+        res.status(200).send(expiredPosts)
+
+        
+    }catch(err){
+        return res.status(400).send({message:err})
+    }
+})
 
 router.post('/:techId/comment', token, async (req, res) => {
     try {
@@ -204,7 +280,8 @@ router.post('/:techId/comment', token, async (req, res) => {
             const expiredPost = await Tech.findByIdAndUpdate(techId,{$set:{expired:true}},{new:true})
             const timeExpired = new Date()
             timeExpired.setTime(expire)
-            return res.status(400).send({ message: 'Cannot comment post has expired', timeExpired })
+            return res.status(400).send({ message: 'Cannot comment post has expired', Post:expiredPost.message,
+        ExpiredStatus:expiredPost.expired,Likes:expiredPost.likes,Dislikes:expiredPost.dislike })
         }
     //standard checks 
         if (!newComment || typeof newComment !== 'string') {
@@ -218,12 +295,4 @@ router.post('/:techId/comment', token, async (req, res) => {
         res.status(500).send({ message: 'Error adding comment' })
       }
     })
-router.get('/mostliked',token,async(res,req)=>{
-
-    try{
-        const mostliked = await Tech.find().sort()
-    }catch(err){
-        res.send()
-    }
-})
 module.exports = router

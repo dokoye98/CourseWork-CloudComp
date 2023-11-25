@@ -30,6 +30,7 @@ router.post('/signup',async(req,res)=>{
     const hashlastname = await bcryptjs.hash(req.body.lastname,salt)
     const hashpassword = await bcryptjs.hash(req.body.password,salt)
     //want to encrypt firstname and lastname as well as password
+    //firstname and lastnames as well as passwords are sensitive data so if the database is breached details wont be stolen
     const dataFormat = new User({
         firstname:hashfirstname,
         lastname:hashlastname,
@@ -63,7 +64,7 @@ router.post('/login',async(req,res)=>{
         return res.status(400).send({message:'Incorrect password'})
     }
    const token = jsonwebtoken.sign({_id:emailCheck._id},process.env.TOKEN_KEY)
-    res.header('auth-token',token).send({'Sign in succesful':emailCheck.email,'auth-token':token})
+    res.header('auth-token',token).send({'auth-token':token})
     })
 
 
